@@ -4,12 +4,11 @@ const router = express.Router();
 const controller = require("../controller/app");
 
 let routes = (app) => {
-  router.post("/login", controller.login);
-  router.get("/logout", controller.logout);   
-  router.post("/register", controller.register);
-  router.post("/upload", controller.upload);
-  router.get("/files", controller.files);
-  router.get("/files/:name", controller.download);
+  router.post("/api/login", controller.login); 
+  router.post("/api/register", controller.register);
+  router.post("/api/upload", controller.upload);
+  router.get("/api/files", controller.files);
+  router.get("/api/files/:name", controller.download);
 
   app.use(router);
 

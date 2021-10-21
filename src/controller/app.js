@@ -1,6 +1,7 @@
 
 const path = require('path');
 const mongoose = require ('mongoose');
+const jwt = require('jsonwebtoken');
 const uploadFile = require("../utils/upload");
 const ExpressError = require('../utils/ExpressError');
 const user =  require('../models/users');
@@ -29,30 +30,29 @@ const login = async (req, res, next) => {
     foundUser = await user.authenticate(req.body.email, req.body.password);
   
     if (!foundUser) return next ( new ExpressError('Incorrect username or password', 404) );
-    req.session.user_id = foundUser._id;
-  
-    res.status(200).send(foundUser._id + '');    
+    
+    const token = jwt.sign({
+      email: foundUser.email
+    }, foundUser._id.toString(), { expiresIn: '2h' });
 
+    // save user token
+    foundUser.sessionToken = token;
+
+    // user
+    res.status(200).json(foundUser);
+  
   } catch (err) {
     next( err );
   }
 };
 
-const logout = async (req, res, next) => {
-  try {
-    req.session.destroy();
-    res.status(200).send("logged out");    
-  } catch (err) {
-    next( err );
-  }
-}
 
 const register = async (req, res, next) => {
   try {
 
     if (!validate(req.body))
       return next(new ExpressError('No credentials provided', 404));
-
+      
     const { name, email, password } = req.body;
 
     const nuUser = new user({
@@ -61,8 +61,16 @@ const register = async (req, res, next) => {
       password, // password is being hashed inside the schema model as a pre save.
     });
 
+    console.log(nuUser._id.toString());
+    console.log(nuUser.email);
+
+    const token = jwt.sign({
+      email: email
+    }, nuUser._id.toString(), { expiresIn: '2h' });
+
+    nuUser.sessionToken = token;
+
     await nuUser.save();
-    req.session.user_id = nuUser._id;
 
     res.status(200).send(nuUser._id);
 
@@ -74,7 +82,8 @@ const register = async (req, res, next) => {
 const upload = async (req, res, next) => {
   try {
 
-    if (!req.session.user_id) return next( new ExpressError('Not Authenticated', 404) ); 
+    console.log(req.headers.get('Authorization'));
+    if (!req.headers.get('Authorization')) return next( new ExpressError('Not Authenticated', 404) ); 
 
     if (!req.body) return next( new ExpressError('No data provided', 404) ); // change to a validate inside utils
     
@@ -104,7 +113,8 @@ const files = async (req, res, next) => {
   // think about how to send do a server side pagination  get /files?page=1&size=5
   try {
 
-    if (!req.session.user_id) return next( new ExpressError('Not Authenticated', 404) ); 
+    console.log(req.headers.get('Authorization'));
+    if (!req.headers.get('Authorization')) return next( new ExpressError('Not Authenticated', 404) ); 
 
     const foundUser = await user.findById(req.session.user_id);
 
@@ -118,8 +128,9 @@ const files = async (req, res, next) => {
 
 const download = async (req, res, next) => {
   try {
+    console.log(req.headers.get('Authorization'));
 
-    if (!req.session.user_id) return next( new ExpressError('Not Authenticated', 404) ); 
+    if (!req.headers.get('Authorization')) return next( new ExpressError('Not Authenticated', 404) ); 
 
     const fileName = req.params.name;         //download/:name       possible change to a get request to use req.body instead
     const directoryPath = __basedir + "/assets/uploads/";
@@ -145,6 +156,5 @@ module.exports = {
   files,
   download,
   register,
-  login,
-  logout
+  login
 };
