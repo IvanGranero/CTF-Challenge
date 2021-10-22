@@ -17,13 +17,7 @@ app.use(cors());
 
 app.use(express.json());
 
-/*
-app.use(session({ 
-  secret: 'baEBVewJmeJ34vGW',
-  resave: false,
-  saveUninitialized: true,
-}));
-*/
+app.use(express.static('assets'))
 
 app.use((err, req, res, next) => {
   const { status = 500, message = 'Error' } = err;
