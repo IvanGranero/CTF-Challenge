@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETAS Defcon CTF Registration Confirmation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #120821;
+            margin: 0;
+            padding: 0;
+            color: #ffffff;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(91, 33, 182, 0.4) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(110, 60, 200, 0.4) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: rgba(45, 22, 70, 0.8);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(182, 142, 255, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(182, 142, 255, 0.2);
+        }
+        .logo {
+            background-color: #3d1e5e;
+            color: #ffffff;
+            text-align: center;
+            padding: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(182, 142, 255, 0.8);
+            position: relative;
+            overflow: hidden;
+        }
+        .logo::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to bottom right,
+                rgba(182, 142, 255, 0) 0%,
+                rgba(182, 142, 255, 0.1) 50%,
+                rgba(182, 142, 255, 0) 100%
+            );
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+        .content {
+            padding: 30px;
+        }
+        h1 {
+            color: #b68eff;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-align: center;
+        }
+        p {
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .instructions {
+            background-color: rgba(61, 30, 94, 0.8);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+            border: 1px solid rgba(182, 142, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .instructions:hover {
+            box-shadow: 0 0 15px rgba(182, 142, 255, 0.5);
+            transform: translateY(-5px);
+        }
+        .instructions h2 {
+            color: #b68eff;
+            margin-top: 0;
+        }
+        .connection-lines {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding: 0 20px 20px;
+        }
+        .line {
+            width: 18%;
+            height: 3px;
+            background: linear-gradient(90deg, #b68eff, #7c3aed);
+            animation: pulse 2s infinite;
+            border-radius: 3px;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.4; transform: scaleY(1); }
+            50% { opacity: 1; transform: scaleY(1.5); }
+            100% { opacity: 0.4; transform: scaleY(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">ETAS CTF</div>
+        <div class="content">
+            <h1>Registration Confirmed: ETAS Defcon CTF</h1>
+            <p>Thank you for registering for the ETAS Defcon Capture The Flag event. We look forward to your participation in this cybersecurity challenge.</p>
+            <div class="instructions">
+                <h2>Event Information</h2>
+                <p>Important details about the event, including dates, format, and preparation instructions, will be provided on your home page.</p>
+                <p>Login to your home page <a href="https://etasboschdefcon.online">https://etasboschdefcon.online</a></p>
+            </div>
+        </div>
+        <div class="connection-lines">
+            <div class="line" style="animation-delay: 0s;"></div>
+            <div class="line" style="animation-delay: 0.4s;"></div>
+            <div class="line" style="animation-delay: 0.8s;"></div>
+            <div class="line" style="animation-delay: 1.2s;"></div>
+            <div class="line" style="animation-delay: 1.6s;"></div>
+        </div>
+    </div>
+</body>
+</html>

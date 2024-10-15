@@ -1,18 +1,17 @@
 const cors = require("cors");
 const express = require("express");
 const initRoutes = require("./src/routes");
-const ExpressError = require('./src/utils/ExpressError');
 const app = express();
 
 global.__basedir = __dirname;
 
-/*
-var corsOptions = {
-  origin: "http://localhost:8081"
-};
-*/
-app.use(cors());
 
+app.use(cors());
+/*
+app.use( cors({
+  origin: 'http://localhost:4200'
+}));
+*/
 //app.use(express.urlencoded({ extended: true }));
 
 app.use(express.json());

@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const docModel = require('./docs');
 
 const userSchema = new mongoose.Schema({
     name: String,               //alphanumeric
@@ -23,13 +22,17 @@ const userSchema = new mongoose.Schema({
         required: true, 
         default: Date.now 
     },
+    verified: {
+        type: Boolean,
+        default: false,
+    },
     sessionToken: String,
-    documents: [ { type: docModel.schema, required: false } ]
+    sshkey: String
 });
 
 userSchema.statics.authenticate = async function (email, password) {
 
-    const foundUser = await this.findOne ({ email });
+    const foundUser = await this.findOne ({ email: email.toLowerCase() });
     if (!foundUser) return false;
     const isValid = await bcrypt.compare(password, foundUser.password);
     return isValid? foundUser : false;

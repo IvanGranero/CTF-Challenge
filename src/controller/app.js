@@ -1,14 +1,16 @@
-
 const path = require('path');
 const mongoose = require ('mongoose');
 const jwt = require('jsonwebtoken');
-const sharp = require('sharp');
-const uploadFile = require("../utils/upload");
+const sendEmail = require("../utils/email");
 const ExpressError = require('../utils/ExpressError');
 const user =  require('../models/users');
+const Token = require("../models/token");
+const crypto = require('crypto');
+const fs = require('fs').promises;
 
-mongoose.connect('mongodb://localhost:27017/photosdb', { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => {
+
+mongoose.connect(DB_HOST, { useNewUrlParser: true, useUnifiedTopology: true })
+.then(() => {
         console.log("Connection open");
     })
     .catch(err => {
@@ -43,11 +45,21 @@ const authenticateJWT = (req, res, next) => {
 const login = async (req, res, next) => {
   try {
 
-    if (!validate(req.body)) return next( new ExpressError('No credentials provided', 404) );
+    if (!validate(req.body)) return next(new ExpressError('No credentials provided', 400) );
 
     foundUser = await user.authenticate(req.body.email, req.body.password);
-  
-    if (!foundUser) return next ( new ExpressError('Incorrect username or password', 404) );
+    if (!foundUser) {
+      //return next (new ExpressError('Incorrect username or password', 404) );
+      return res.status(404).send({
+        message: "Incorrect username or password"
+      });
+    }
+    if (!foundUser.verified) {
+      //return next ( new ExpressError('Email not verified', 401) );   
+      return res.status(404).send({
+        message: "Email not verified"
+      });
+    }
     
     const token = jwt.sign({
       id: foundUser._id.toString()
@@ -55,8 +67,8 @@ const login = async (req, res, next) => {
 
     // save user token
     foundUser.sessionToken = token;
+    await foundUser.save();
 
-    // user
     res.status(200).json(foundUser);
   
   } catch (err) {
@@ -64,28 +76,39 @@ const login = async (req, res, next) => {
   }
 };
 
-
 const register = async (req, res, next) => {
   try {
 
     if (!validate(req.body))
-      return next(new ExpressError('No credentials provided', 404));
+      return next(new ExpressError('No credentials provided', 400));
       
     const { name, email, password } = req.body;
+    const email_lower =  email.toLowerCase()
 
+    const userExist = await user.findOne({ email: email_lower });
+    if (userExist) {      
+      return res.status(404).send({
+        message: "Email already exists"
+      });
+    }
     const nuUser = new user({
       name,
-      email,
+      email: email_lower,
       password, // password is being hashed inside the schema model as a pre save.
     });
 
-    const token = jwt.sign({
-      id: nuUser._id.toString()
-    }, 'secretphotos', { expiresIn: '2h' });
+    let token = await new Token({
+      userId: nuUser._id.toString(),
+      token: crypto.randomBytes(32).toString("hex"),
+    }).save();
 
-    nuUser.sessionToken = token;
+    console.log(token)
 
-    await nuUser.save();
+    const baseURL = base_url;
+    const message = `${baseURL}/api/verify/${token.userId}/${token.token}`;
+    await sendEmail(nuUser.email, "Verify Email", message);
+
+    console.log ( await nuUser.save() );
 
     res.status(200).send(nuUser._id);
 
@@ -94,7 +117,7 @@ const register = async (req, res, next) => {
   }
 }
 
-const upload = async (req, res, next) => {
+const submitkey = async (req, res, next) => {
   try {
 
     let foundUser = await user.findById(req.id.id);
@@ -103,102 +126,63 @@ const upload = async (req, res, next) => {
 
     if (!req.body) return next( new ExpressError('No data provided', 404) ); // change to a validate inside utils
   
-    await uploadFile(req, res); 
-    uploaded = res.req.file.filename;
-    originalname = req.file.originalname;
-    mimetype = req.file.mimetype;
-
-    if (req.file.mimetype.split("/")[0] === 'image') {
-      await sharp(req.file.path)
-        .resize(100, 100)
-        .jpeg({ quality: 50 })
-        .toFile(__basedir + "/assets/uploads/" + uploaded + "-thumbnail");
-    }
-
-    foundUser.documents.push( { originalName: originalname, mimeType: mimetype, filePath: uploaded } );
+    const { sshkey } = req.body;
+      
+    foundUser.sshkey = sshkey;
 
     await foundUser.save();
 
+    message = foundUser._id.toString() + "," + sshkey; 
+
+    //await sendEmail("ivan.granero@us.bosch.com", "New Registration to DEFCON", message);
+    await sendEmail(email_username, "New Registration to DEFCON", message);
+
     return res.status(200).send({
-      message: "Uploaded the file successfully: " + uploaded
+      message: "SSH key submitted successfully: "
     });
 
-  } catch (err) {
-    if (err.code == "LIMIT_FILE_SIZE") {
-      return next( new ExpressError( "File size cannot be larger than 10MB!", 400 ) );
-    }
+  } catch (err) {     
+    console.log(err)     
     next( err );
   }
 };
 
-const files = async (req, res, next) => {
-  // think about how to send do a server side pagination  get /files?page=1&size=5
-  try {
-    console.log(req.id.id);
-    let foundUser = await user.findById(req.id.id);
-    console.log(foundUser);
-    if (!foundUser) return next( new ExpressError('Not Authenticated', 404) ); 
-    console.log(foundUser.documents);
-    res.status(200).send(foundUser.documents);
-
-  } catch (err) {
-    next( err );
-  }
-};
-
-const download = async (req, res, next) => {
-  try {
-    console.log("downloading");
-    let foundUser = await user.findById(req.id.id);
-
-    if (!foundUser) return next( new ExpressError('Not Authenticated', 404) ); 
-
-    const fileName = req.params.name;         //download/:name       possible change to a get request to use req.body instead
-    console.log(fileName);
-    const directoryPath = __basedir + "/assets/uploads/";
+const verifyemail = async (req, res, next) => {
+  //console.log("Verifying email...");
+  //console.log(req.params.id);
+  //console.log(req.params.token);
   
-    const foundDoc = foundUser.documents.find( ({ filePath }) => filePath === fileName );
-    if (!foundDoc) return next( new ExpressError('Document not found', 404) );
-
-    res.download(directoryPath + fileName, foundDoc.originalName, (err) => {
-      if (err) next ( new ExpressError('Could not download the file.' + err, 500) );
-    });
-
-  } catch (err) {
-    next( err );
-  }
-
-};
-
-const remove = async (req, res, next) => {
   try {
-    console.log("deleting");
-    let foundUser = await user.findById(req.id.id);
+    const veruser = await user.findById(req.params.id);
 
-    if (!foundUser) return next( new ExpressError('Not Authenticated', 404) ); 
+    if (!veruser) return res.status(200).send("Invalid link user"); // remove the user fb
 
-    const fileName = req.params.name;     
-    console.log(fileName);
-    const directoryPath = __basedir + "/assets/uploads/";
+    if (veruser.verified) return res.status(200).send("Token has already been verified"); 
 
-    await foundUser.updateOne({ $pull: { documents: { filePath: { $in: fileName }}}});
-    // not removing file for now, just updating the database
+    console.log (req.params.token) 
 
-    console.log(foundUser.documents);
-    res.status(200).send(foundUser.documents);
+    const token = await Token.findOne({
+      userId: veruser._id.toString(),
+      token: req.params.token,
+    });
+    
+        if (!token) return res.status(200).send("Invalid link token");  // remove the token fb
 
+    veruser.verified = true;
+    console.log ( veruser.save() );
+    console.log ( await Token.findByIdAndRemove(token._id) );
+
+    //res.send("email verified successfully");
+    res.sendFile(path.resolve('src/views/regconfirm.html'));
   } catch (err) {
     next( err );
   }
-
-};
+}
 
 module.exports = {
-  upload,
-  files,
-  download,
-  remove,
   register,
   login,
-  authenticateJWT
+  authenticateJWT,
+  verifyemail,
+  submitkey
 };
